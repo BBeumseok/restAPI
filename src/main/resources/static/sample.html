@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <h1>Sample Client</h1>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        async function callTest() {
+            const response = await axios.get("http://localhost:9010/api/sample/doA")
+            return response.data
+        }
+
+        callTest()
+            .then(data => console.log(data))
+            .catch(e => console.log(e));
+
+    </script>
+</body>
+</html>
+
+<!--
+    REST 방식으로 동작할 경우 별도의 클라이언트에서 API를 호출하여 사용하기 때문에 별도의 서버를
+    구성하고 Ajax를 이용한 서버를 호출하는 것이 일반적이나
+    현재 예제에서는 별도의 서버를 구성하는 일을 최소화 하고자 html 파일을 임의로 생성하고 이를 이용하여 API 서버를 사용하도록 구성
+
+    프로젝트 실행 후 '/sample.html' 을 호출 시 정상적으로 처리되지 못한 에러 발생
+    에러의 원인은 Thymeleaf가 없는 환경에서 스프링 MVC의 모든 경로를 스프링에서 처리하려고 시도하기 때문
+-->

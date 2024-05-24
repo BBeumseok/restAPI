@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+<div class="result">
+
+</div>
+
+<button class="btn1">CALL SERVER</button>
+<script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+<script>
+    //  Axios 라이브러리를 추가하고, 버튼을 누르면 동작할 수 있도록 구성
+    //  callServer() 함수 내부에서는 Local Storage에 보관된 Access Token을 이용하도록 수정
+    //  Access Token이 없다면 경고창을 통해서 알 수 있게 예외를 발생하도록 구성
+    const callServer = async() => {
+        console.log("call server 1...")
+
+        const accessToken = localStorage.getItem("accessToken")
+
+        if(!accessToken) {
+            throw 'Cannot Find Access Token'
+        }
+
+        //  만약 Access Token이 존재한다면 '/api/sample/doA' 를 호출하도록 코드를 수정
+        //  Access Token은 HTTP의 'Authorization' 헤더로 전송해야 하므로 아래와 같이 작성
+        const authHeader = {"Authorization": `Bearer ${accessToken}`}
+
+        //  서버 호출 시 'Expired Token' 예외가 전달되면 별도의 처리가 필요하므로 예외 관련된 코드를 추가
+        try {
+            const res = await axios.get("http://localhost:9010/api/sample/doA", {headers: authHeader})
+            return res.data
+        }catch (err) {
+            console.log('error')
+            console.log(err.response.data.msg)
+            if(err.response.data.msg === 'Expired Token') {     //  오래된 Access Token
+                console.log("Refresh Your Token")
+                //  'Expired Token' 메시지가 발생하는 경우에 반드시 한 번은 '/refreshToken'을 호출하도록 수정
+                //  '/refreshToken'을 호출하는 함수를 추가하고, 예외 발생 시에 호출하도록 한다.
+                try {
+                    await callRefresh()     //  refreshToken 호출
+                    console.log("new tokens......saved.......")     //  새로운 토큰 저장 후 다시 원래 기능 호출
+                    return callServer()
+                }catch (refreshErr) {
+                    if(refreshErr.response.data.msg === 'OLD_REFRESH') {
+                        console.log("OLD_REFRESH")
+                        throw refreshErr.response.data.msg
+                    }else if(refreshErr.response.data.msg === 'NO_ACCESS'){
+                        console.log("NO_ACCESS")
+                        throw refreshErr.response.data.msg
+                    }else {
+                        throw refreshErr.response.data.msg
+                    }
+                }
+            }   //end if
+        }
+    }
+
+    //  추가된 callRefresh()는 'Expired Token' 메시지가 전송되면 기존의 토큰들을 전송해서
+    //  새로운 'Access Token'을 받아 다시 LocalStorage에 저장
+    //  저장된 후 원래의 함수를 다시 호출해서 정상적으로 호출되는지 확인할 수 있다.
+    const callRefresh = async () => {
+        const accessToken = localStorage.getItem("accessToken")
+        const refreshToken = localStorage.getItem("refreshToken")
+
+        const tokens = {accessToken, refreshToken}
+        const res = await axios.post("http://localhost:9010/refreshToken", tokens)
+
+        //  받아온 토큰을 LocalStorage에 저장
+        localStorage.setItem("accessToken", res.data.accessToken)
+        localStorage.setItem("refreshToken", res.data.refreshToken)
+    }
+
+    const resultDiv = document.querySelector(".result")
+
+    document.querySelector(".btn1").addEventListener("click", () => {
+        callServer().then(result => {
+            console.log(result)
+        }).catch(error => {
+            alert(error)
+            location.href = 'http://localhost:9010/apiLogin.html'
+        })
+    }, false)
+
+    /*  실행결과를 확인해보면 '/api/sample/doA'를 호출했을 때 오래된 Access Token을 가지고
+        접근했기 때문에 RefreshToken을 이용하여 토큰을 갱신하고 저장한 후 다시 'doA' 호출한 결과를 반환하고 있다.
+     */
+</script>
+</body>
+</html>
